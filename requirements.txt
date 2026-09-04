@@ -2,6 +2,7 @@ scapy==2.5.0
 fastapi>=0.104.0
 uvicorn[standard]>=0.24.0
 pydantic>=2.5.0
+python-multipart>=0.0.9
 yara-python>=4.3.0
 redis>=5.0.0
 clickhouse-driver>=0.2.6

@@ -19,6 +19,7 @@ classifiers = [
 
 [project.scripts]
 cybershield = "shared.cli:main"
+cybershield-gui = "gui.app:main"
 
 [tool.pytest.ini_options]
 testpaths = ["shared/tests", "modules/*/tests"]

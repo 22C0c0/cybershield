@@ -1,0 +1,54 @@
+name: Build GUI
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ["gui/**", "modules/**", "packaging/**", "shared/**", "requirements-gui.txt"]
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            artifact: cybershield-gui-linux
+          - os: windows-latest
+            artifact: cybershield-gui-windows
+          - os: macos-latest
+            artifact: cybershield-gui-macos
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-gui.txt
+
+      - name: Build with PyInstaller
+        shell: bash
+        run: python -m PyInstaller --noconfirm --clean packaging/cybershield-gui.spec
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: |
+            dist/cybershield-gui
+            dist/cybershield-gui.exe
+          if-no-files-found: error
+
+      - name: Smoke test (Linux only, headless)
+        if: matrix.os == 'ubuntu-latest'
+        shell: bash
+        run: |
+          chmod +x dist/cybershield-gui
+          timeout 15 env QT_QPA_PLATFORM=offscreen ./dist/cybershield-gui &
+          sleep 8
+          pgrep -f dist/cybershield-gui && echo "GUI OK" || echo "GUI FAILED"

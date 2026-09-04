@@ -76,6 +76,67 @@ ruff check .
 ruff format .
 ```
 
+> **Note:** Python 3.12+ is required for the GUI (PySide6).
+
+## Desktop GUI
+
+A PySide6 desktop application wraps every module in one window — no Docker or
+running services required; it imports the module engines directly in-process.
+
+Tabs:
+1. **Dashboard** — living status of all modules + aggregated global alerts
+2. **NIDS** — live packet capture (start/stop), stats, signatures, alerts
+3. **Malware Sandbox** — pick a file, run static/dynamic analysis, view risk
+   score, verdict and hashes
+4. **Vuln Scanner** — scan a host or CIDR network, review open ports and CVEs
+5. **SIEM** — ingest pasted log lines or a log file, view generated alerts
+6. **Zero Trust** — register/login/logout, role-based access checks, audit trail
+7. **Secrets Detector** — scan files, folders, git repos or raw content
+
+```bash
+# Install (PySide6 + base requirements)
+pip install -r requirements-gui.txt
+
+# Launch the GUI
+python -m gui.app
+# or, after `pip install -e .`
+cybershield-gui
+```
+
+Run the windowed app from a graphical session (needs a display server).
+
+### Cross-platform — Windows / macOS / Linux
+
+The GUI and all module engines are platform-agnostic. Build a standalone
+executable for any OS from CI or locally:
+
+| Platform | Build                     | Output                  |
+|----------|---------------------------|-------------------------|
+| Windows  | `build\gui.bat` (cmd)     | `dist\cybershield-gui.exe` |
+| macOS    | `bash build/gui.sh`       | `dist/cybershield-gui`  |
+| Linux    | `bash build/gui.sh`       | `dist/cybershield-gui`  |
+
+```bash
+# One-time venv + deps (adds PyInstaller on top of requirements-gui.txt)
+bash build/gui.sh --install        # Linux / macOS
+build\gui.bat --install            # Windows
+
+# Build the bundle
+bash build/gui.sh                  # Linux / macOS
+build\gui.bat                      # Windows
+```
+
+Notes:
+- Bundling uses `packaging/cybershield-gui.spec` (single-file app, no Python
+  required on the target machine).
+- **NIDS capture** needs elevated privileges: root/`CAP_NET_RAW` on Linux
+  (`sudo setcap cap_net_raw+ep ./dist/cybershield-gui`), Administrator on
+  Windows, or root/sudo on macOS. Other modules work without privileges.
+- **NIDS interface** is auto-detected per platform (`eth0`/`en0`/Windows
+  adapter) and can be overridden in the GUI.
+- The malware sandbox executes the analyzed file in an isolated temp dir;
+  enable the checkbox with caution (it actually runs the target).
+
 ## CI/CD
 
 The repository uses GitHub Actions (`.github/workflows/ci.yml`) with three stages:

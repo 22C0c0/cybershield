@@ -253,7 +253,8 @@ class VulnScanner:
     def __init__(self) -> None:
         self.config = load_config()
         self.port_scanner = PortScanner(
-            max_concurrent=int(self.config.name != ""),  # placeholder
+            max_concurrent=500,
+            timeout=1.0,
         )
         self.vuln_checker = VulnerabilityChecker()
         self.results: list[HostResult] = []
@@ -320,7 +321,7 @@ class VulnScanner:
     async def _resolve_hostname(self, ip: str) -> str:
         try:
             loop = asyncio.get_event_loop()
-            result = await loop.getaddrinfo(ip, None, socket.AF_INET)
+            result = await loop.getaddrinfo(ip, None, family=socket.AF_INET)
             return result[0][3][0] if result else ""
         except (socket.gaierror, IndexError):
             return ""

@@ -1,0 +1,28 @@
+{
+    "rules": [
+        {
+            "name": "Failed Login Attempt",
+            "description": "Detects failed login attempts",
+            "severity": "medium",
+            "pattern": "failed password",
+            "tags": ["auth", "brute-force"],
+            "throttle_seconds": 60
+        },
+        {
+            "name": "Root Login",
+            "description": "Root login detected",
+            "severity": "high",
+            "pattern": "accepted password for root",
+            "tags": ["auth", "root"],
+            "throttle_seconds": 0
+        },
+        {
+            "name": "Service Restart",
+            "description": "System service restarted",
+            "severity": "low",
+            "pattern": "started service",
+            "tags": ["system", "service"],
+            "throttle_seconds": 300
+        }
+    ]
+}

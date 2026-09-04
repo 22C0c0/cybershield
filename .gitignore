@@ -1,0 +1,51 @@
+# Environment
+.env
+*.env.local
+venv/
+.venv/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+*.egg-info/
+dist/
+build/
+
+# Rust
+target/
+Cargo.lock
+
+# Node
+node_modules/
+.next/
+
+# Docker
+docker-compose.override.yml
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets - NEVER commit
+*.pem
+*.key
+*.cert
+*.p12
+secrets.json
+credentials.yml
+
+# Logs
+logs/
+*.log
+
+# Database
+*.db
+*.sqlite

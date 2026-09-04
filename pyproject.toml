@@ -1,0 +1,33 @@
+[project]
+name = "cybershield"
+version = "1.0.0"
+description = "High-Performance Cybersecurity Suite"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.11"
+authors = [
+    {name = "CyberShield Contributors"}
+]
+keywords = ["cybersecurity", "nids", "malware", "vulnerability-scanner", "siem", "zero-trust", "secrets"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Security",
+]
+
+[project.scripts]
+cybershield = "shared.cli:main"
+
+[tool.pytest.ini_options]
+testpaths = ["shared/tests", "modules/*/tests"]
+python_files = ["test_*.py"]
+addopts = "-v --tb=short"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "S", "B", "A", "COM", "C4", "DTZ", "ISC", "ICN", "PIE", "PT", "RSE", "RET", "SLF", "SIM", "TID", "TCH", "ARG", "PTH", "ERA"]

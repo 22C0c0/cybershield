@@ -2,15 +2,10 @@
 
 from __future__ import annotations
 
-import json
-from pathlib import Path
-
-import pytest
-
-from shared.config import load_config, AppConfig
-from shared.crypto import sha256, md5, file_hash, generate_secret
+from shared.config import AppConfig, load_config
+from shared.crypto import file_hash, generate_secret, md5, sha256
 from shared.logger import get_logger
-from shared.models import Alert, Severity, AlertStatus, ThreatIndicator
+from shared.models import Alert, AlertStatus, Severity, ThreatIndicator
 
 
 class TestConfig:

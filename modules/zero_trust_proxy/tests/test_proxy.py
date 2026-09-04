@@ -2,14 +2,10 @@
 
 from __future__ import annotations
 
-import pytest
-
 from modules.zero_trust_proxy.src.engine import (
-    ZeroTrustProxy,
-    PasswordManager,
     MFAManager,
-    User,
-    Session,
+    PasswordManager,
+    ZeroTrustProxy,
 )
 
 
@@ -36,6 +32,7 @@ class TestMFAManager:
     def test_generate_and_verify_code(self):
         secret = MFAManager.generate_secret()
         import time
+
         code = MFAManager.generate_code(secret, int(time.time()))
         assert len(code) == 6
         assert MFAManager.verify(secret, code) is True

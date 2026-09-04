@@ -7,10 +7,9 @@ from __future__ import annotations
 
 import asyncio
 import socket
-import struct
 import time
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 from shared.config import load_config
 from shared.logger import get_logger
@@ -127,7 +126,7 @@ class PortScanner:
                 banner = await self._grab_banner(ip, port)
                 service = self._identify_service(banner)
                 return PortResult(port=port, state="open", service=service, banner=banner)
-            except (asyncio.TimeoutError, ConnectionRefusedError, OSError):
+            except (TimeoutError, ConnectionRefusedError, OSError):
                 return PortResult(port=port, state="closed")
 
     async def _grab_banner(self, ip: str, port: int) -> str:
@@ -174,33 +173,38 @@ class VulnerabilityChecker:
         for cve_id in cve_ids:
             if cve_id in CVE_DATABASE:
                 cve = CVE_DATABASE[cve_id]
-                vulns.append({
-                    "cve_id": cve_id,
-                    "name": cve["name"],
-                    "severity": cve["severity"],
-                    "description": cve["description"],
-                    "port": port_result.port,
-                    "service": port_result.service,
-                })
+                vulns.append(
+                    {
+                        "cve_id": cve_id,
+                        "name": cve["name"],
+                        "severity": cve["severity"],
+                        "description": cve["description"],
+                        "port": port_result.port,
+                        "service": port_result.service,
+                    }
+                )
         if port_result.banner:
             version = self._extract_version(port_result.banner)
             if version:
                 for cve_id, cve_data in CVE_DATABASE.items():
                     for affected in cve_data.get("affected", []):
                         if port_result.service in affected.lower():
-                            vulns.append({
-                                "cve_id": cve_id,
-                                "name": cve_data["name"],
-                                "severity": cve_data["severity"],
-                                "description": cve_data["description"],
-                                "port": port_result.port,
-                                "service": port_result.service,
-                                "detected_version": version,
-                            })
+                            vulns.append(
+                                {
+                                    "cve_id": cve_id,
+                                    "name": cve_data["name"],
+                                    "severity": cve_data["severity"],
+                                    "description": cve_data["description"],
+                                    "port": port_result.port,
+                                    "service": port_result.service,
+                                    "detected_version": version,
+                                }
+                            )
         return vulns
 
     def _extract_version(self, banner: str) -> str:
         import re
+
         patterns = [
             r"Apache/(\d+\.\d+\.\d+)",
             r"OpenSSH[_ ](\d+\.\d+)",
@@ -219,9 +223,31 @@ class VulnScanner:
     """Main vulnerability scanner engine."""
 
     DEFAULT_PORTS = [
-        21, 22, 23, 25, 53, 80, 110, 135, 139, 143,
-        443, 445, 993, 995, 1433, 1521, 3306, 3389,
-        5432, 5900, 6379, 8080, 8443, 9200, 27017,
+        21,
+        22,
+        23,
+        25,
+        53,
+        80,
+        110,
+        135,
+        139,
+        143,
+        443,
+        445,
+        993,
+        995,
+        1433,
+        1521,
+        3306,
+        3389,
+        5432,
+        5900,
+        6379,
+        8080,
+        8443,
+        9200,
+        27017,
     ]
 
     def __init__(self) -> None:
@@ -234,7 +260,9 @@ class VulnScanner:
         self.alerts: list[Alert] = []
 
     async def scan_host(
-        self, ip: str, ports: list[int] | None = None
+        self,
+        ip: str,
+        ports: list[int] | None = None,
     ) -> HostResult:
         start = time.time()
         target_ports = ports or self.DEFAULT_PORTS
@@ -273,9 +301,12 @@ class VulnScanner:
         return result
 
     async def scan_network(
-        self, network: str, ports: list[int] | None = None
+        self,
+        network: str,
+        ports: list[int] | None = None,
     ) -> list[HostResult]:
         import ipaddress
+
         try:
             hosts = [str(h) for h in ipaddress.ip_network(network, strict=False).hosts()]
         except ValueError:
@@ -308,8 +339,10 @@ class VulnScanner:
 
 if __name__ == "__main__":
     import sys
+
     target = sys.argv[1] if len(sys.argv) > 1 else "127.0.0.1"
     scanner = VulnScanner()
     result = asyncio.run(scanner.scan_host(target))
     import json
+
     print(json.dumps(result.to_dict(), indent=2))

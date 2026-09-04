@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from enum import Enum
-from typing import Any, Optional
 import uuid
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
+from enum import StrEnum
+from typing import Any
 
 
-class Severity(str, Enum):
+class Severity(StrEnum):
     CRITICAL = "critical"
     HIGH = "high"
     MEDIUM = "medium"
@@ -17,7 +17,7 @@ class Severity(str, Enum):
     INFO = "info"
 
 
-class AlertStatus(str, Enum):
+class AlertStatus(StrEnum):
     OPEN = "open"
     INVESTIGATING = "investigating"
     RESOLVED = "resolved"
@@ -27,6 +27,7 @@ class AlertStatus(str, Enum):
 @dataclass
 class Alert:
     """Universal alert format shared across all modules."""
+
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
     module: str = ""
     title: str = ""
@@ -35,7 +36,7 @@ class Alert:
     status: AlertStatus = AlertStatus.OPEN
     source_ip: str = ""
     destination_ip: str = ""
-    timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    timestamp: datetime = field(default_factory=lambda: datetime.now(UTC))
     metadata: dict[str, Any] = field(default_factory=dict)
     tags: list[str] = field(default_factory=list)
 
@@ -58,12 +59,13 @@ class Alert:
 @dataclass
 class ThreatIndicator:
     """IOC (Indicator of Compromise) shared across modules."""
+
     indicator_type: str  # ip, domain, hash, url, email
     value: str
     confidence: float = 0.0  # 0.0 - 1.0
     source: str = ""
-    first_seen: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
-    last_seen: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    first_seen: datetime = field(default_factory=lambda: datetime.now(UTC))
+    last_seen: datetime = field(default_factory=lambda: datetime.now(UTC))
     tags: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:

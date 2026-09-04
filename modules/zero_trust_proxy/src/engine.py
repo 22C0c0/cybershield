@@ -11,9 +11,8 @@ import json
 import secrets
 import time
 from dataclasses import dataclass, field
-from datetime import datetime, timezone, timedelta
-from typing import Any, Optional
-from pathlib import Path
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from shared.config import load_config
 from shared.logger import get_logger
@@ -31,7 +30,7 @@ class User:
     mfa_secret: str = ""
     mfa_enabled: bool = False
     is_active: bool = True
-    created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     last_login: datetime | None = None
     failed_attempts: int = 0
     locked_until: datetime | None = None
@@ -59,7 +58,7 @@ class Session:
 
     @property
     def is_expired(self) -> bool:
-        return datetime.now(timezone.utc) > self.expires_at
+        return datetime.now(UTC) > self.expires_at
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -113,7 +112,10 @@ class PasswordManager:
         if salt is None:
             salt = secrets.token_hex(32)
         key = hashlib.pbkdf2_hmac(
-            "sha256", password.encode(), salt.encode(), 100_000
+            "sha256",
+            password.encode(),
+            salt.encode(),
+            100_000,
         )
         return key.hex(), salt
 
@@ -138,7 +140,7 @@ class MFAManager:
         counter_bytes = time_step.to_bytes(8, "big")
         mac = hmac.new(secret.encode(), counter_bytes, hashlib.sha1).digest()
         offset = mac[-1] & 0x0F
-        code_int = int.from_bytes(mac[offset:offset + 4], "big") & 0x7FFFFFFF
+        code_int = int.from_bytes(mac[offset : offset + 4], "big") & 0x7FFFFFFF
         return str(code_int % 1_000_000).zfill(6)
 
     @staticmethod
@@ -162,13 +164,15 @@ class TokenManager:
         payload = {
             "sub": username,
             "roles": roles,
-            "iat": datetime.now(timezone.utc).isoformat(),
-            "exp": (datetime.now(timezone.utc) + timedelta(hours=self.expiry_hours)).isoformat(),
+            "iat": datetime.now(UTC).isoformat(),
+            "exp": (datetime.now(UTC) + timedelta(hours=self.expiry_hours)).isoformat(),
             "jti": secrets.token_hex(16),
         }
         payload_json = json.dumps(payload, sort_keys=True)
         signature = hmac.new(
-            self.secret_key.encode(), payload_json.encode(), hashlib.sha256
+            self.secret_key.encode(),
+            payload_json.encode(),
+            hashlib.sha256,
         ).hexdigest()
         encoded = secrets.token_urlsafe(len(payload_json))
         return f"{encoded}.{signature}"
@@ -214,13 +218,17 @@ class AccessController:
         ]
 
     def check_access(
-        self, user_roles: list[str], path: str, mfa_verified: bool = False
+        self,
+        user_roles: list[str],
+        path: str,
+        mfa_verified: bool = False,
     ) -> tuple[bool, str]:
         for policy in self.policies:
             if path.startswith(tuple(policy.allowed_paths)) or not policy.allowed_paths:
-                if policy.required_roles:
-                    if not any(role in user_roles for role in policy.required_roles):
-                        return False, f"Requires roles: {policy.required_roles}"
+                if policy.required_roles and not any(
+                    role in user_roles for role in policy.required_roles
+                ):
+                    return False, f"Requires roles: {policy.required_roles}"
                 if policy.require_mfa and not mfa_verified:
                     return False, "MFA verification required"
                 return True, "access_granted"
@@ -244,7 +252,7 @@ class AuditLogger:
         details: str = "",
     ) -> AuditEntry:
         entry = AuditEntry(
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             username=username,
             action=action,
             resource=resource,
@@ -257,7 +265,9 @@ class AuditLogger:
         return entry
 
     def get_entries(
-        self, username: str | None = None, limit: int = 100
+        self,
+        username: str | None = None,
+        limit: int = 100,
     ) -> list[AuditEntry]:
         entries = self.entries
         if username:
@@ -293,7 +303,10 @@ class ZeroTrustProxy:
         logger.info("Default admin user created (change password immediately!)")
 
     def register_user(
-        self, username: str, password: str, roles: list[str] | None = None
+        self,
+        username: str,
+        password: str,
+        roles: list[str] | None = None,
     ) -> User | None:
         if username in self.users:
             return None
@@ -309,7 +322,10 @@ class ZeroTrustProxy:
         return user
 
     def authenticate(
-        self, username: str, password: str, ip_address: str
+        self,
+        username: str,
+        password: str,
+        ip_address: str,
     ) -> tuple[bool, str]:
         user = self.users.get(username)
         if not user:
@@ -320,14 +336,14 @@ class ZeroTrustProxy:
             self.audit.log(username, "login", "auth", ip_address, False, details="account_disabled")
             return False, "Account disabled"
 
-        if user.locked_until and datetime.now(timezone.utc) < user.locked_until:
+        if user.locked_until and datetime.now(UTC) < user.locked_until:
             self.audit.log(username, "login", "auth", ip_address, False, details="account_locked")
             return False, "Account locked"
 
         if not PasswordManager.verify_password(password, user.password_hash, user.salt):
             user.failed_attempts += 1
             if user.failed_attempts >= 5:
-                user.locked_until = datetime.now(timezone.utc) + timedelta(minutes=15)
+                user.locked_until = datetime.now(UTC) + timedelta(minutes=15)
                 alert = Alert(
                     module="zero-trust-proxy",
                     title=f"Account Locked: {username}",
@@ -343,14 +359,14 @@ class ZeroTrustProxy:
 
         user.failed_attempts = 0
         user.locked_until = None
-        user.last_login = datetime.now(timezone.utc)
+        user.last_login = datetime.now(UTC)
         session = self._create_session(user, ip_address)
         self.audit.log(username, "login", "auth", ip_address, True)
         return True, session.token
 
     def _create_session(self, user: User, ip_address: str) -> Session:
         token = secrets.token_urlsafe(48)
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         session = Session(
             token=token,
             username=user.username,
@@ -376,12 +392,18 @@ class ZeroTrustProxy:
             return False, "User not found"
 
         allowed, reason = self.access_controller.check_access(
-            user.roles, path, user.mfa_enabled
+            user.roles,
+            path,
+            user.mfa_enabled,
         )
         if not allowed:
             self.audit.log(
-                session.username, "access_denied", path, session.ip_address,
-                False, details=reason,
+                session.username,
+                "access_denied",
+                path,
+                session.ip_address,
+                False,
+                details=reason,
             )
             return False, reason
 

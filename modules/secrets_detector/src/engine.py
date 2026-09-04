@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import re
+import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -45,7 +46,9 @@ class Finding:
             "line": self.line_number,
             "pattern": self.pattern_name,
             "severity": self.severity.value,
-            "matched": self.matched_text[:50] + "..." if len(self.matched_text) > 50 else self.matched_text,
+            "matched": self.matched_text[:50] + "..."
+            if len(self.matched_text) > 50
+            else self.matched_text,
             "description": self.description,
             "tags": self.tags,
             "entropy": round(self.entropy, 4),
@@ -95,7 +98,9 @@ class SecretPatterns:
             ),
             SecretPattern(
                 name="Slack Webhook",
-                pattern=re.compile(r"https://hooks\.slack\.com/services/T[A-Z0-9]+/B[A-Z0-9]+/[a-zA-Z0-9]+"),
+                pattern=re.compile(
+                    r"https://hooks\.slack\.com/services/T[A-Z0-9]+/B[A-Z0-9]+/[a-zA-Z0-9]+"
+                ),
                 severity=Severity.HIGH,
                 description="Slack Webhook URL detected",
                 tags=["slack", "webhook"],
@@ -196,6 +201,7 @@ class EntropyCalculator:
     @staticmethod
     def calculate(text: str) -> float:
         import math
+
         if not text:
             return 0.0
         freq: dict[str, int] = {}
@@ -209,15 +215,43 @@ class SecretsDetector:
     """Main secrets detection engine."""
 
     SKIP_DIRS = {
-        ".git", "node_modules", "__pycache__", ".venv", "venv",
-        "dist", "build", ".next", "target", "vendor",
+        ".git",
+        "node_modules",
+        "__pycache__",
+        ".venv",
+        "venv",
+        "dist",
+        "build",
+        ".next",
+        "target",
+        "vendor",
     }
     SKIP_EXTENSIONS = {
-        ".pyc", ".pyo", ".so", ".dll", ".exe", ".bin",
-        ".png", ".jpg", ".jpeg", ".gif", ".ico", ".svg",
-        ".mp3", ".mp4", ".wav", ".avi",
-        ".zip", ".tar", ".gz", ".rar", ".7z",
-        ".woff", ".woff2", ".ttf", ".eot",
+        ".pyc",
+        ".pyo",
+        ".so",
+        ".dll",
+        ".exe",
+        ".bin",
+        ".png",
+        ".jpg",
+        ".jpeg",
+        ".gif",
+        ".ico",
+        ".svg",
+        ".mp3",
+        ".mp4",
+        ".wav",
+        ".avi",
+        ".zip",
+        ".tar",
+        ".gz",
+        ".rar",
+        ".7z",
+        ".woff",
+        ".woff2",
+        ".ttf",
+        ".eot",
     }
 
     def __init__(self, custom_patterns: list[SecretPattern] | None = None) -> None:
@@ -230,7 +264,7 @@ class SecretsDetector:
         if file_path.suffix in self.SKIP_EXTENSIONS:
             return findings
         try:
-            with open(file_path, "r", errors="replace") as f:
+            with file_path.open(errors="replace") as f:
                 lines = f.readlines()
         except OSError:
             return findings
@@ -257,7 +291,9 @@ class SecretsDetector:
                     findings.append(finding)
                     logger.warning(
                         "Secret found: %s at %s:%d",
-                        pattern.name, file_path, line_num,
+                        pattern.name,
+                        file_path,
+                        line_num,
                     )
         self.findings.extend(findings)
         return findings
@@ -289,10 +325,14 @@ class SecretsDetector:
         findings = self.scan_directory(repo_path)
 
         import subprocess
+
         try:
-            result = subprocess.run(
-                ["git", "diff", "--cached", "--name-only"],
-                capture_output=True, text=True, cwd=repo_path,
+            git_bin = shutil.which("git") or "git"
+            result = subprocess.run(  # noqa: S603 - git is resolved via PATH, filenames from index
+                [git_bin, "diff", "--cached", "--name-only"],
+                capture_output=True,
+                text=True,
+                cwd=repo_path,
             )
             for file_name in result.stdout.strip().split("\n"):
                 if file_name:
@@ -314,17 +354,19 @@ class SecretsDetector:
                     entropy = EntropyCalculator.calculate(match.group())
                     if pattern.entropy_threshold > 0 and entropy < pattern.entropy_threshold:
                         continue
-                    findings.append(Finding(
-                        file_path=source,
-                        line_number=line_num,
-                        line_content=line.strip(),
-                        pattern_name=pattern.name,
-                        severity=pattern.severity,
-                        matched_text=match.group(),
-                        description=pattern.description,
-                        tags=pattern.tags,
-                        entropy=entropy,
-                    ))
+                    findings.append(
+                        Finding(
+                            file_path=source,
+                            line_number=line_num,
+                            line_content=line.strip(),
+                            pattern_name=pattern.name,
+                            severity=pattern.severity,
+                            matched_text=match.group(),
+                            description=pattern.description,
+                            tags=pattern.tags,
+                            entropy=entropy,
+                        )
+                    )
         return findings
 
     def generate_report(self) -> dict[str, Any]:
@@ -358,7 +400,8 @@ class SecretsDetector:
 
 if __name__ == "__main__":
     import sys
-    target = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(".")
+
+    target = Path(sys.argv[1]) if len(sys.argv) > 1 else Path()
     detector = SecretsDetector()
     if target.is_dir():
         detector.scan_directory(target)

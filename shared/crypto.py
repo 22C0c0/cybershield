@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import hashlib
 import secrets
-from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def sha256(data: bytes) -> str:
@@ -21,7 +24,7 @@ def file_hash(path: Path) -> dict[str, str]:
     md5_hash = hashlib.md5()
     sha1_hash = hashlib.sha1()
 
-    with open(path, "rb") as f:
+    with path.open("rb") as f:
         for chunk in iter(lambda: f.read(8192), b""):
             sha256_hash.update(chunk)
             md5_hash.update(chunk)

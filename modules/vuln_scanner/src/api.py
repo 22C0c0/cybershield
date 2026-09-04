@@ -27,17 +27,18 @@ async def scan_target(request: ScanRequest):
     if request.network_scan:
         results = await scanner.scan_network(request.target, request.ports)
         return {"hosts": [r.to_dict() for r in results], "summary": scanner.get_summary()}
-    else:
-        result = await scanner.scan_host(request.target, request.ports)
-        return {"host": result.to_dict(), "summary": scanner.get_summary()}
+    result = await scanner.scan_host(request.target, request.ports)
+    return {"host": result.to_dict(), "summary": scanner.get_summary()}
 
 
 @app.get("/api/v1/cves")
 async def list_cves():
     from modules.vuln_scanner.src.engine import CVE_DATABASE
+
     return CVE_DATABASE
 
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8003)

@@ -25,8 +25,9 @@ async def health():
 
 @app.post("/api/v1/scan")
 async def scan_directory(request: ScanRequest):
-    from modules.secrets_detector.src.engine import SecretsDetector
     from pathlib import Path
+
+    from modules.secrets_detector.src.engine import SecretsDetector
 
     detector = SecretsDetector()
     detector.scan_directory(Path(request.path), request.max_depth)
@@ -50,12 +51,10 @@ async def list_patterns():
     from modules.secrets_detector.src.engine import SecretPatterns
 
     patterns = SecretPatterns.get_default_patterns()
-    return [
-        {"name": p.name, "severity": p.severity.value, "tags": p.tags}
-        for p in patterns
-    ]
+    return [{"name": p.name, "severity": p.severity.value, "tags": p.tags} for p in patterns]
 
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8006)

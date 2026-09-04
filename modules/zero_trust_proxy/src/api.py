@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import FastAPI, HTTPException, Header
+from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel
 
 app = FastAPI(title="CyberShield Zero Trust Proxy", version="1.0.0")
@@ -27,6 +27,7 @@ async def health():
 @app.post("/api/v1/auth/register")
 async def register(request: RegisterRequest):
     from modules.zero_trust_proxy.src.engine import ZeroTrustProxy
+
     proxy = ZeroTrustProxy()
     user = proxy.register_user(request.username, request.password, request.roles)
     if not user:
@@ -37,6 +38,7 @@ async def register(request: RegisterRequest):
 @app.post("/api/v1/auth/login")
 async def login(request: LoginRequest):
     from modules.zero_trust_proxy.src.engine import ZeroTrustProxy
+
     proxy = ZeroTrustProxy()
     success, token = proxy.authenticate(request.username, request.password, "api")
     if not success:
@@ -47,6 +49,7 @@ async def login(request: LoginRequest):
 @app.post("/api/v1/auth/logout")
 async def logout(authorization: str = Header(...)):
     from modules.zero_trust_proxy.src.engine import ZeroTrustProxy
+
     proxy = ZeroTrustProxy()
     token = authorization.replace("Bearer ", "")
     proxy.logout(token)
@@ -56,10 +59,12 @@ async def logout(authorization: str = Header(...)):
 @app.get("/api/v1/audit")
 async def get_audit(limit: int = 50):
     from modules.zero_trust_proxy.src.engine import ZeroTrustProxy
+
     proxy = ZeroTrustProxy()
     return proxy.get_audit_log(limit=limit)
 
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8005)

@@ -8,14 +8,16 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import TYPE_CHECKING
 
-from scapy.all import sniff, IP, TCP, UDP, ICMP, Raw  # noqa: F401
-from scapy.packet import Packet
+from scapy.all import ICMP, IP, TCP, UDP, Raw, sniff  # noqa: F401
 
 from shared.config import load_config
 from shared.logger import get_logger
-from shared.models import Alert, Severity, ThreatIndicator
+from shared.models import Alert, Severity
+
+if TYPE_CHECKING:
+    from scapy.packet import Packet
 
 logger = get_logger("cybershield.nids")
 
@@ -111,9 +113,7 @@ class AnomalyDetector:
             self.syn_counter[src_ip] = []
         self.syn_counter[src_ip].append(timestamp)
         cutoff = timestamp - self.window_seconds
-        self.syn_counter[src_ip] = [
-            t for t in self.syn_counter[src_ip] if t > cutoff
-        ]
+        self.syn_counter[src_ip] = [t for t in self.syn_counter[src_ip] if t > cutoff]
         return len(self.syn_counter[src_ip]) > self.syn_threshold
 
     def check_port_scan(self, src_ip: str, dst_port: int, timestamp: float) -> bool:
@@ -128,7 +128,7 @@ class AnomalyDetector:
             tracker["timestamps"].append(timestamp)
         cutoff = timestamp - self.window_seconds
         tracker["ports"] = [
-            p for p, t in zip(tracker["ports"], tracker["timestamps"]) if t > cutoff
+            p for p, t in zip(tracker["ports"], tracker["timestamps"], strict=False) if t > cutoff
         ]
         tracker["timestamps"] = [t for t in tracker["timestamps"] if t > cutoff]
         return len(set(tracker["ports"])) > 25
@@ -158,16 +158,16 @@ class NIDSEngine:
             self.stats.tcp_packets += 1
             tcp_layer = packet[TCP]
 
-            if tcp_layer.flags & 0x02 and not (tcp_layer.flags & 0x10):
-                if self.anomaly_detector.check_syn_flood(src_ip, timestamp):
-                    self._create_alert(
-                        title="SYN Flood Detected",
-                        description=f"Possible SYN flood from {src_ip}",
-                        severity=Severity.CRITICAL,
-                        source_ip=src_ip,
-                        destination_ip=dst_ip,
-                        tags=["dos", "syn-flood"],
-                    )
+            is_syn = tcp_layer.flags & 0x02 and not (tcp_layer.flags & 0x10)
+            if is_syn and self.anomaly_detector.check_syn_flood(src_ip, timestamp):
+                self._create_alert(
+                    title="SYN Flood Detected",
+                    description=f"Possible SYN flood from {src_ip}",
+                    severity=Severity.CRITICAL,
+                    source_ip=src_ip,
+                    destination_ip=dst_ip,
+                    tags=["dos", "syn-flood"],
+                )
 
             if self.anomaly_detector.check_port_scan(src_ip, tcp_layer.dport, timestamp):
                 self._create_alert(
@@ -220,7 +220,10 @@ class NIDSEngine:
         self.stats.suspicious_packets += 1
         logger.warning(
             "Alert: %s | %s -> %s | %s",
-            title, source_ip, destination_ip, severity.value,
+            title,
+            source_ip,
+            destination_ip,
+            severity.value,
         )
         return alert
 

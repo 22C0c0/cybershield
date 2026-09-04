@@ -10,13 +10,16 @@ import re
 import time
 from collections import defaultdict
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Any, Callable, Optional
-from pathlib import Path
+from datetime import UTC, datetime
+from typing import TYPE_CHECKING, Any
 
 from shared.config import load_config
 from shared.logger import get_logger
 from shared.models import Alert, AlertStatus, Severity
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+    from pathlib import Path
 
 logger = get_logger("cybershield.siem")
 
@@ -57,15 +60,14 @@ class DetectionRule:
     _last_fired: float = 0.0
 
     def evaluate(self, entry: LogEntry) -> bool:
-        if self.throttle_seconds > 0:
-            if time.time() - self._last_fired < self.throttle_seconds:
-                return False
+        if self.throttle_seconds > 0 and time.time() - self._last_fired < self.throttle_seconds:
+            return False
         try:
             if self.condition(entry):
                 self._last_fired = time.time()
                 return True
-        except Exception:
-            pass
+        except Exception as e:
+            logger.debug("Rule evaluation failed: %s", e)
         return False
 
 
@@ -74,16 +76,16 @@ class LogParser:
 
     PATTERNS = {
         "syslog": re.compile(
-            r"(?P<month>\w+)\s+(?P<day>\d+)\s+(?P<time>\S+)\s+(?P<host>\S+)\s+(?P<process>\S+?)(?:\[(?P<pid>\d+)\])?:\s+(?P<message>.+)"
+            r"(?P<month>\w+)\s+(?P<day>\d+)\s+(?P<time>\S+)\s+(?P<host>\S+)\s+(?P<process>\S+?)(?:\[(?P<pid>\d+)\])?:\s+(?P<message>.+)",
         ),
         "apache": re.compile(
-            r'(?P<ip>[\d.]+)\s+-\s+(?P<user>\S+)\s+\[(?P<timestamp>[^\]]+)\]\s+"(?P<method>\S+)\s+(?P<path>\S+)\s+\S+"\s+(?P<status>\d+)\s+(?P<size>\d+)'
+            r'(?P<ip>[\d.]+)\s+-\s+(?P<user>\S+)\s+\[(?P<timestamp>[^\]]+)\]\s+"(?P<method>\S+)\s+(?P<path>\S+)\s+\S+"\s+(?P<status>\d+)\s+(?P<size>\d+)',
         ),
         "ssh_failed": re.compile(
-            r"Failed password for (?:invalid user )?(?P<user>\S+) from (?P<ip>[\d.]+)"
+            r"Failed password for (?:invalid user )?(?P<user>\S+) from (?P<ip>[\d.]+)",
         ),
         "auth": re.compile(
-            r"(?P<user>\S+)\s+:\s+(?P<message>.*?)(?:\s+from\s+(?P<ip>[\d.]+))?$"
+            r"(?P<user>\S+)\s+:\s+(?P<message>.*?)(?:\s+from\s+(?P<ip>[\d.]+))?$",
         ),
     }
 
@@ -93,7 +95,7 @@ class LogParser:
             return None
 
         entry = LogEntry(
-            timestamp=datetime.now(timezone.utc),
+            timestamp=datetime.now(UTC),
             source=source,
             message=line,
             raw=line,
@@ -168,8 +170,7 @@ class DetectionEngine:
                 condition=lambda e: (
                     e.level == "error"
                     and any(
-                        svc in e.source.lower()
-                        for svc in ["kernel", "systemd", "cron", "sshd"]
+                        svc in e.source.lower() for svc in ["kernel", "systemd", "cron", "sshd"]
                     )
                 ),
                 tags=["system", "critical"],
@@ -306,7 +307,7 @@ class SIEMEngine:
     def ingest_file(self, file_path: Path, source: str = "file") -> list[Alert]:
         alerts = []
         try:
-            with open(file_path) as f:
+            with file_path.open() as f:
                 for line in f:
                     line_alerts = self.ingest_log(line, source)
                     alerts.extend(line_alerts)
@@ -316,14 +317,15 @@ class SIEMEngine:
 
     def load_rules_from_file(self, rules_path: Path) -> None:
         try:
-            with open(rules_path) as f:
+            with rules_path.open() as f:
                 rules_data = json.load(f)
             for rule_def in rules_data.get("rules", []):
+                pattern = rule_def.get("pattern", "")
                 rule = DetectionRule(
                     name=rule_def["name"],
                     description=rule_def.get("description", ""),
                     severity=Severity(rule_def.get("severity", "medium")),
-                    condition=lambda e, pattern=rule_def.get("pattern", ""): pattern in e.message.lower(),
+                    condition=lambda e, pattern=pattern: pattern in e.message.lower(),
                     tags=rule_def.get("tags", []),
                     throttle_seconds=rule_def.get("throttle_seconds", 0),
                 )
@@ -345,7 +347,10 @@ if __name__ == "__main__":
     test_logs = [
         "Failed password for root from 192.168.1.100 port 22 ssh2",
         "Accepted publickey for admin from 10.0.0.5 port 443 ssh2",
-        "sudo: user : command not allowed ; TTY=pts/0 ; PWD=/home/user ; USER=root ; COMMAND=/bin/cat /etc/shadow",
+        (
+            "sudo: user : command not allowed ; TTY=pts/0 ; PWD=/home/user ; "
+            "USER=root ; COMMAND=/bin/cat /etc/shadow"
+        ),
         "kernel: [UFW BLOCK] IN=eth0 OUT= SRC=172.16.0.1 DST=10.0.0.1",
     ]
     for log in test_logs:

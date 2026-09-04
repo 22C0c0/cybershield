@@ -5,7 +5,6 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
 
 
 def _env(key: str, default: str = "") -> str:
@@ -22,7 +21,9 @@ class DatabaseConfig:
 
     @property
     def url(self) -> str:
-        return f"postgresql+asyncpg://{self.user}:{self.password}@{self.host}:{self.port}/{self.name}"
+        return (
+            f"postgresql+asyncpg://{self.user}:{self.password}@{self.host}:{self.port}/{self.name}"
+        )
 
 
 @dataclass(frozen=True)
@@ -44,7 +45,9 @@ class ClickHouseConfig:
 @dataclass(frozen=True)
 class KafkaConfig:
     broker: str = field(default_factory=lambda: _env("KAFKA_BROKER", "localhost:9092"))
-    topic_alerts: str = field(default_factory=lambda: _env("KAFKA_TOPIC_ALERTS", "cybershield.alerts"))
+    topic_alerts: str = field(
+        default_factory=lambda: _env("KAFKA_TOPIC_ALERTS", "cybershield.alerts")
+    )
     topic_logs: str = field(default_factory=lambda: _env("KAFKA_TOPIC_LOGS", "cybershield.logs"))
 
 

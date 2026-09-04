@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from pydantic import BaseModel
 
 app = FastAPI(title="CyberShield NIDS", version="1.0.0")
@@ -33,6 +33,7 @@ async def health():
 @app.get("/api/v1/stats")
 async def get_stats():
     from modules.nids.src.engine import NIDSEngine
+
     engine = NIDSEngine()
     return engine.get_stats()
 
@@ -49,13 +50,14 @@ async def start_scan(request: ScanRequest):
 @app.get("/api/v1/signatures")
 async def list_signatures():
     from modules.nids.src.engine import SignatureEngine
+
     engine = SignatureEngine()
     return [
-        {"name": s.name, "severity": s.severity.value, "tags": s.tags}
-        for s in engine.signatures
+        {"name": s.name, "severity": s.severity.value, "tags": s.tags} for s in engine.signatures
     ]
 
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8001)

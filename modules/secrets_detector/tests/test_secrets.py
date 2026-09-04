@@ -2,15 +2,11 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
-import pytest
-
 from modules.secrets_detector.src.engine import (
-    SecretsDetector,
-    SecretPatterns,
     EntropyCalculator,
     Finding,
+    SecretPatterns,
+    SecretsDetector,
 )
 
 
@@ -96,24 +92,20 @@ class TestSecretsDetector:
         assert "total_findings" in report
         assert "by_severity" in report
 
-    def test_generate_alerts(self):
+    def test_generate_alerts(self, tmp_path):
         detector = SecretsDetector()
-        from pathlib import Path
-        import tempfile
-        f = Path(tempfile.mktemp(suffix=".txt"))
+        f = tmp_path / "secret.txt"
         f.write_text('AWS_KEY="AKIAIOSFODNN7EXAMPLE"')
-        try:
-            detector.scan_file(f)
-            alerts = detector.generate_alerts()
-            assert len(alerts) > 0
-            assert alerts[0].module == "secrets-detector"
-        finally:
-            f.unlink()
+        detector.scan_file(f)
+        alerts = detector.generate_alerts()
+        assert len(alerts) > 0
+        assert alerts[0].module == "secrets-detector"
 
 
 class TestFinding:
     def test_finding_to_dict(self):
         from shared.models import Severity
+
         finding = Finding(
             file_path="test.py",
             line_number=1,

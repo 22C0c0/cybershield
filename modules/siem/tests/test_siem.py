@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
-import pytest
-
 from modules.siem.src.engine import (
-    SIEMEngine,
-    LogParser,
-    DetectionEngine,
     AlertStore,
+    DetectionEngine,
     LogEntry,
+    LogParser,
+    SIEMEngine,
 )
 
 
@@ -47,7 +45,8 @@ class TestDetectionEngine:
             source_ip="10.0.0.1",
         )
         import datetime
-        entry.timestamp = datetime.datetime.now(datetime.timezone.utc)
+
+        entry.timestamp = datetime.datetime.now(datetime.UTC)
         alerts = engine.evaluate(entry)
         assert len(alerts) > 0
         assert any("Brute Force" in a.title for a in alerts)
@@ -57,6 +56,7 @@ class TestAlertStore:
     def test_add_and_get(self):
         store = AlertStore()
         from shared.models import Alert, Severity
+
         alert = Alert(module="test", title="Test", severity=Severity.HIGH)
         store.add(alert)
         alerts = store.get_alerts()
@@ -65,6 +65,7 @@ class TestAlertStore:
     def test_filter_by_severity(self):
         store = AlertStore()
         from shared.models import Alert, Severity
+
         store.add(Alert(module="test", title="High", severity=Severity.HIGH))
         store.add(Alert(module="test", title="Low", severity=Severity.LOW))
         high = store.get_alerts(severity=Severity.HIGH)
@@ -75,7 +76,7 @@ class TestAlertStore:
 class TestSIEMEngine:
     def test_ingest_log(self):
         engine = SIEMEngine()
-        alerts = engine.ingest_log(
+        engine.ingest_log(
             "Failed password for root from 192.168.1.100 port 22 ssh2",
             source="test",
         )
@@ -87,7 +88,7 @@ class TestSIEMEngine:
             "Failed password for root from 1.1.1.1 port 22 ssh2",
             "Accepted password for admin from 2.2.2.2 port 22 ssh2",
         ]
-        alerts = engine.ingest_batch(logs, source="test")
+        engine.ingest_batch(logs, source="test")
         assert engine.log_count == 2
 
     def test_get_stats(self):

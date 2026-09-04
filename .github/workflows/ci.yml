@@ -45,9 +45,20 @@ jobs:
         run: docker compose up -d
       - name: Health check
         run: |
-          sleep 10
+          sleep 15
+          failed=""
           for port in 8001 8002 8003 8004 8005 8006; do
-            curl -sf http://localhost:$port/health || exit 1
+            if curl -sf http://localhost:$port/health >/dev/null 2>&1; then
+              echo "OK: port $port"
+            else
+              echo "FAIL: port $port"
+              failed="$failed $port"
+            fi
           done
+          if [ -n "$failed" ]; then
+            docker compose ps
+            docker compose logs --tail=50
+            exit 1
+          fi
       - name: Stop services
         run: docker compose down

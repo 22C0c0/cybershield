@@ -40,9 +40,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build all Docker images
-        run: docker-compose build
+        run: docker compose build
       - name: Start services
-        run: docker-compose up -d
+        run: docker compose up -d
       - name: Health check
         run: |
           sleep 10
@@ -50,4 +50,4 @@ jobs:
             curl -sf http://localhost:$port/health || exit 1
           done
       - name: Stop services
-        run: docker-compose down
+        run: docker compose down

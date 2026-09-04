@@ -27,12 +27,12 @@
 ### 1. Clone & Start
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/cybershield.git
+git clone https://github.com/22C0c0/cybershield.git
 cd cybershield
 cp .env.example .env
 # Edit .env with your configuration
 
-docker-compose up -d
+docker compose up -d
 ```
 
 ### 2. Verify All Services
@@ -75,6 +75,14 @@ pytest -v
 ruff check .
 ruff format .
 ```
+
+## CI/CD
+
+The repository uses GitHub Actions (`.github/workflows/ci.yml`) with three stages:
+
+1. **Lint** — `ruff check .` and `ruff format --check .`
+2. **Test** — `pytest -v` (52 unit tests across all modules and shared libraries)
+3. **Docker** (on `main` only) — builds all images with `docker compose build`, starts the stack, and verifies the `/health` endpoint on every module port (8001–8006)
 
 ## API Examples
 
@@ -132,14 +140,15 @@ cybershield/
 ├── shared/                 # Shared libraries (config, logging, models, crypto)
 ├── modules/
 │   ├── nids/              # Network Intrusion Detection System
-│   ├── malware-sandbox/   # Malware Analysis Sandbox
-│   ├── vuln-scanner/      # Vulnerability Scanner
+│   ├── malware_sandbox/   # Malware Analysis Sandbox
+│   ├── vuln_scanner/      # Vulnerability Scanner
 │   ├── siem/              # Security Information & Event Management
-│   ├── zero-trust-proxy/  # Zero Trust Authentication Proxy
-│   └── secrets-detector/  # Secrets & Credential Leak Detector
-├── docker-compose.yml     # Full orchestration
+│   ├── zero_trust_proxy/  # Zero Trust Authentication Proxy
+│   └── secrets_detector/  # Secrets & Credential Leak Detector
+├── docker-compose.yml     # Full orchestration (docker compose v2+)
 ├── requirements.txt       # Python dependencies
-└── pyproject.toml         # Project configuration
+├── pyproject.toml         # Project configuration (incl. ruff, pytest)
+└── .github/workflows/     # GitHub Actions CI/CD pipeline
 ```
 
 ## Security Notes
